@@ -1,6 +1,6 @@
 # Ruang Rasa
 
-[![Pages](https://img.shields.io/github/actions/workflow/status/Fachryxyf/ruang-rasa/pages%2Fpages-build-deployment?branch=main&label=pages&logo=github)](https://github.com/Fachryxyf/ruang-rasa/deployments)
+[![Pages](https://img.shields.io/github/deployments/Fachryxyf/ruang-rasa/github-pages?label=pages&logo=github)](https://fachryxyf.github.io/ruang-rasa/)
 [![Three.js](https://img.shields.io/badge/three.js-r169-000000?logo=threedotjs&logoColor=white)](https://threejs.org/)
 [![No build step](https://img.shields.io/badge/build-none-1f883d)](#menjalankan)
 [![License](https://img.shields.io/github/license/Fachryxyf/ruang-rasa)](LICENSE)
@@ -37,10 +37,14 @@ Bentuk mengikuti scroll lewat `IntersectionObserver`. Panel terakhir menyerahkan
 
 Tanpa bundler, tanpa dependency, tanpa `npm install`. Three.js dimuat dari CDN via import map.
 
+Modul ES butuh HTTP, jadi buka lewat server lokal — bukan `file://`:
+
 ```bash
 python3 -m http.server 8000
 # buka http://localhost:8000
 ```
+
+Server ini hanya untuk pratinjau lokal. Yang di-deploy tetap file statis; GitHub Pages menyajikannya langsung tanpa Python.
 
 Self-check:
 
