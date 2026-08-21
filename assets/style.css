@@ -20,17 +20,60 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-#scene {
+#stage {
   position: fixed;
   inset: 0;
-  width: 100%;
-  height: 100%;
   z-index: 0;
 }
+
+#scene {
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* The clay is grabbable, so say so — and keep a press from becoming a scroll. */
+  cursor: grab;
+  touch-action: pan-y;
+}
+
+#stage.is-shaping #scene { cursor: grabbing; }
+
+#scene:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+}
+
+/* Invitation to touch, retired once the reader has actually shaped something. */
+.shape-hint {
+  position: absolute;
+  inset-inline: 0;
+  bottom: clamp(1rem, 4vh, 2.5rem);
+  margin: 0;
+  text-align: center;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  opacity: 0.55;
+  transition: opacity 0.6s;
+}
+
+#stage.is-shaping .shape-hint,
+#stage.has-been-shaped .shape-hint { opacity: 0; }
+
+.mark-out {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+.keys { font-size: 0.85rem; }
 
 main {
   position: relative;
   z-index: 1;
+  /* Gaps between paragraphs pass the press through to the clay behind. */
+  pointer-events: none;
   max-width: 62rem;
   margin: 0 auto;
   padding: 0 clamp(1.25rem, 5vw, 4rem);
@@ -145,4 +188,14 @@ a:hover { color: var(--ink); }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+}
+
+/* Only actual content re-arms pointer events, so the clay stays reachable
+   through the empty space around the text. */
+h1, h2, p, .controls, button, a, footer, .noscript {
+  pointer-events: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shape-hint { transition: none; }
 }

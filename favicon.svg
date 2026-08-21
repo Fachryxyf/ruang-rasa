@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Ruang Rasa">
+  <title>Ruang Rasa</title>
+  <defs>
+    <radialGradient id="clay" cx="38%" cy="32%" r="78%">
+      <stop offset="0" stop-color="#e0d3bd"/>
+      <stop offset="0.55" stop-color="#c8b8a0"/>
+      <stop offset="1" stop-color="#7d6f5c"/>
+    </radialGradient>
+  </defs>
+  <rect width="32" height="32" fill="#0b0c10"/>
+  <!-- One irregular mass: the clay, never swapped, only reshaped. -->
+  <path fill="url(#clay)"
+        d="M16.4 4.2c4.6-.3 8.7 2.6 10.2 6.8 1.5 4.3.2 9.3-3.2 12.2-3.5 3-8.9 3.4-12.4.7-3.5-2.6-5.3-7.6-4.2-11.9C7.9 7.7 11.8 4.5 16.4 4.2Z"/>
+  <!-- A single dent — the mark left behind, still healing. -->
+  <path fill="#0b0c10" opacity="0.28"
+        d="M19.6 12.1c1.6.5 2.4 2.3 1.8 3.9-.7 1.6-2.6 2.3-4.1 1.5-1.6-.8-2.1-2.9-1.1-4.3.8-1.1 2.2-1.5 3.4-1.1Z"/>
+</svg>

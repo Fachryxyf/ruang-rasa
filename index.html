@@ -6,11 +6,16 @@
 <title>Ruang Rasa — rasa sebagai satu variabel</title>
 <meta name="description" content="Visualisasi 3D interaktif dari gagasan bahwa rasa adalah satu variabel dasar yang berubah bentuk lewat konteks, bukan kumpulan emosi yang terpisah.">
 <link rel="canonical" href="https://ruang-rasa.fachryxyf.com/">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 
-<canvas id="scene" aria-hidden="true"></canvas>
+<div id="stage">
+  <canvas id="scene" tabindex="0" role="application"
+          aria-label="Tanah liat tiga dimensi. Tekan dan tahan untuk membentuk. Panah untuk memindahkan titik tekan, Enter atau spasi untuk menekan."></canvas>
+  <p class="shape-hint" aria-hidden="true">tekan &amp; tahan permukaannya</p>
+</div>
 
 <noscript>
   <p class="noscript">Visualisasi 3D memerlukan JavaScript. Teksnya tetap dapat dibaca di bawah.</p>
@@ -57,7 +62,7 @@
   <section class="panel" data-shape="tenang">
     <h2>Tetapi tanah liatnya tetap sama</h2>
     <p>Yang berubah hanyalah bentuknya. Tidak ada sesuatu yang baru masuk &mdash; hanya sesuatu yang lama, yang kembali dibentuk oleh keadaan.</p>
-    <p class="quiet">Perhatikan: sejak awal halaman ini, bentuknya berganti berkali-kali. Objeknya tidak pernah diganti. Satu permukaan, satu bahan, dari awal sampai sekarang.</p>
+    <p class="quiet">Perhatikan: sejak awal halaman ini, bentuknya berganti berkali-kali. Objeknya tidak pernah diganti. Satu permukaan, satu bahan, dari awal sampai sekarang &mdash; termasuk setiap bekas yang sudah kamu tinggalkan di atasnya.</p>
   </section>
 
   <section class="panel panel-wide" data-shape="tenang">
@@ -71,6 +76,10 @@
       <button type="button" data-shape="luka" aria-pressed="false">kehilangan</button>
     </div>
     <p class="label-out" aria-live="polite">Bahan yang sama, dibentuk oleh <strong id="ctx-name">sunyi</strong>.</p>
+    <p>Konteks hanya satu tangan. Yang lain tanganmu sendiri: tekan permukaannya, tahan, geser. Ia akan mengalah di bawah tekanan.</p>
+    <p class="quiet">Lepaskan, dan bekasnya tinggal. Tidak ada tombol untuk menghapusnya &mdash; bekas itu memudar sendiri, perlahan, lewat waktu. Itu satu-satunya cara yang tersedia.</p>
+    <p class="mark-out" aria-live="polite" id="mark-count">Belum ada bekas.</p>
+    <p class="quiet keys">Dengan papan tuts: fokuskan ke bidang tanah liat, gunakan panah untuk memindahkan titik tekan, lalu tahan Enter atau spasi.</p>
   </section>
 
   <section class="panel panel-wide" data-shape="tenang">

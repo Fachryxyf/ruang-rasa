@@ -2,6 +2,10 @@ import * as THREE from 'three';
 
 // One geometry, one material, for the whole page. Context only moves uniforms.
 // That constraint is the argument: the clay is never swapped out.
+//
+// Shaping is direct. Press the clay and it yields under the pointer; let go and
+// the dent stays. Marks fade only with time, slowly — which is the claim the
+// essay makes about luka, enforced here as a decay constant rather than prose.
 
 const SHAPES = {
   tenang:  { amp: 0.16, freq: 1.05, churn: 0.10, spin: 0.05, color: 0x6f7a86, glow: 0x1a2029 },
@@ -10,6 +14,15 @@ const SHAPES = {
   kecewa:  { amp: 0.44, freq: 4.30, churn: 0.55, spin: 0.02, color: 0x8f8676, glow: 0x241f1a },
   luka:    { amp: 0.62, freq: 6.20, churn: 0.85, spin: 0.20, color: 0xa3564f, glow: 0x2c1213 },
 };
+
+/* --- shaping constants ---------------------------------------------------- */
+
+const MARK_SLOTS = 12;        // fixed uniform array: no allocation while shaping
+const MARK_MAX = 0.30;        // deepest a single press can go
+const MARK_GAIN = 0.85;       // depth added per second of holding
+const MARK_HALF_LIFE = 75;    // seconds for a mark to fade to half — time, slowly
+const MARK_TIGHT = 26.0;      // gaussian falloff; higher = smaller thumbprint
+const RADIUS = 1.25;
 
 const canvas = document.getElementById('scene');
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -28,21 +41,39 @@ const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
 camera.position.z = 4.2;
 
+/* Denser mesh reads the thumbprint better, but not every device can afford it. */
+const coarse = matchMedia('(pointer: coarse)').matches || (navigator.hardwareConcurrency || 4) <= 4;
+const detail = coarse ? 40 : 72;
+
+const markDirs = Array.from({ length: MARK_SLOTS }, () => new THREE.Vector3(0, 0, 1));
+const markStrengths = new Float32Array(MARK_SLOTS);
+
 const uniforms = {
-  uTime:  { value: 0 },
-  uAmp:   { value: SHAPES.tenang.amp },
-  uFreq:  { value: SHAPES.tenang.freq },
-  uChurn: { value: SHAPES.tenang.churn },
-  uColor: { value: new THREE.Color(SHAPES.tenang.color) },
-  uGlow:  { value: new THREE.Color(SHAPES.tenang.glow) },
+  uTime:      { value: 0 },
+  uAmp:       { value: SHAPES.tenang.amp },
+  uFreq:      { value: SHAPES.tenang.freq },
+  uChurn:     { value: SHAPES.tenang.churn },
+  uColor:     { value: new THREE.Color(SHAPES.tenang.color) },
+  uGlow:      { value: new THREE.Color(SHAPES.tenang.glow) },
+  uMarkDir:   { value: markDirs },
+  uMarkStr:   { value: markStrengths },
+  uMarkTight: { value: MARK_TIGHT },
+  uPressDir:  { value: new THREE.Vector3(0, 0, 1) },
+  uPressAmp:  { value: 0 },
 };
 
 const material = new THREE.ShaderMaterial({
   uniforms,
+  defines: { MARK_SLOTS },
   vertexShader: /* glsl */`
-    uniform float uTime, uAmp, uFreq, uChurn;
+    uniform float uTime, uAmp, uFreq, uChurn, uMarkTight, uPressAmp;
+    uniform vec3 uMarkDir[MARK_SLOTS];
+    uniform float uMarkStr[MARK_SLOTS];
+    uniform vec3 uPressDir;
     varying vec3 vNormal;
     varying float vDisp;
+    varying float vDent;
+    varying float vPress;
 
     // Ashima simplex noise (3D), public domain.
     vec3 mod289(vec3 x){return x-floor(x*(1./289.))*289.;}
@@ -92,37 +123,95 @@ const material = new THREE.ShaderMaterial({
       return 42.*dot(m*m,vec4(dot(p0,x0),dot(p1,x1),dot(p2,x2),dot(p3,x3)));
     }
 
-    void main() {
-      vec3 n = normalize(position);
+    /* Context: the ambient churn of the material. */
+    float contextDisp(vec3 n) {
       float t = uTime * uChurn;
       float d = snoise(n * uFreq + vec3(0., 0., t)) * uAmp;
       d += snoise(n * uFreq * 2.7 + vec3(t, 0., 0.)) * uAmp * 0.35;
+      return d;
+    }
+
+    /* Marks left by hand: gaussian dents that persist in the clay's own frame. */
+    float dentDisp(vec3 n) {
+      float d = 0.0;
+      for (int i = 0; i < MARK_SLOTS; i++) {
+        float s = uMarkStr[i];
+        if (s <= 0.0005) continue;
+        float r = distance(n, uMarkDir[i]);
+        d -= s * exp(-r * r * uMarkTight);
+      }
+      return d;
+    }
+
+    float pressDisp(vec3 n) {
+      if (uPressAmp <= 0.0005) return 0.0;
+      float r = distance(n, uPressDir);
+      return -uPressAmp * exp(-r * r * uMarkTight * 0.75);
+    }
+
+    float totalDisp(vec3 n) {
+      return contextDisp(n) + dentDisp(n) + pressDisp(n);
+    }
+
+    void main() {
+      vec3 n = normalize(position);
+      float d = totalDisp(n);
+
+      /* Real normals: finite differences on the displaced surface, so lighting
+         actually follows the dents instead of the underlying sphere. */
+      vec3 tangent = normalize(cross(n, abs(n.y) < 0.99 ? vec3(0., 1., 0.) : vec3(1., 0., 0.)));
+      vec3 bitangent = cross(n, tangent);
+      float eps = 0.035;
+      vec3 na = normalize(n + tangent * eps);
+      vec3 nb = normalize(n + bitangent * eps);
+      vec3 p0 = n * (1.0 + d);
+      vec3 pa = na * (1.0 + totalDisp(na));
+      vec3 pb = nb * (1.0 + totalDisp(nb));
+      vec3 geoNormal = normalize(cross(pa - p0, pb - p0));
+      if (dot(geoNormal, n) < 0.0) geoNormal = -geoNormal;
+
       vDisp = d / max(uAmp, 0.001);
-      vNormal = normalMatrix * n;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position * (1.0 + d), 1.0);
+      vDent = clamp(-dentDisp(n) / 0.12, 0.0, 1.0);
+      vPress = clamp(-pressDisp(n) / 0.12, 0.0, 1.0);
+      vNormal = normalMatrix * geoNormal;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(p0, 1.0);
     }
   `,
   fragmentShader: /* glsl */`
     uniform vec3 uColor, uGlow;
     varying vec3 vNormal;
     varying float vDisp;
+    varying float vDent;
+    varying float vPress;
 
     void main() {
       vec3 nrm = normalize(vNormal);
-      float light = clamp(dot(nrm, normalize(vec3(0.4, 0.7, 0.6))), 0.0, 1.0);
+      vec3 lightDir = normalize(vec3(0.4, 0.7, 0.6));
+      float light = clamp(dot(nrm, lightDir), 0.0, 1.0);
       float rim = pow(1.0 - abs(nrm.z), 2.2);
+
       vec3 col = mix(uGlow, uColor, light * 0.85 + 0.15);
       col += uColor * rim * 0.5;
+
+      /* Clay sheen — enough specular to read the new surface detail. */
+      vec3 halfway = normalize(lightDir + vec3(0.0, 0.0, 1.0));
+      col += vec3(1.0) * pow(clamp(dot(nrm, halfway), 0.0, 1.0), 22.0) * 0.16;
+
       col = mix(col, uColor, clamp(vDisp, 0.0, 1.0) * 0.18);
+
+      /* Old marks sit in shadow; the one under the hand right now glows. */
+      col = mix(col, uGlow * 0.75, vDent * 0.55);
+      col += uColor * vPress * 0.35;
+
       gl_FragColor = vec4(col, 1.0);
     }
   `,
 });
 
-const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(1.25, 96), material);
+const mesh = new THREE.Mesh(new THREE.IcosahedronGeometry(RADIUS, detail), material);
 scene.add(mesh);
 
-// --- context switching -------------------------------------------------------
+/* --- context switching ---------------------------------------------------- */
 
 const target = { ...SHAPES.tenang };
 const targetColor = new THREE.Color(SHAPES.tenang.color);
@@ -167,7 +256,159 @@ for (const panel of document.querySelectorAll('.panel[data-shape]')) {
   observer.observe(panel);
 }
 
-// --- loop --------------------------------------------------------------------
+/* --- shaping: pointer, touch, keyboard ------------------------------------ */
+
+const stage = document.getElementById('stage');
+const markCountEl = document.getElementById('mark-count');
+const raycaster = new THREE.Raycaster();
+const sphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), RADIUS);
+const hit = new THREE.Vector3();
+const pointer = new THREE.Vector2();
+const localDir = new THREE.Vector3();
+
+let pressing = false;
+let pressAmp = 0;
+let liveSlot = -1;
+let shapedOnce = false;
+
+/** Screen point → direction on the clay's own surface, or null if it missed. */
+function surfaceDirAt(clientX, clientY) {
+  const rect = renderer.domElement.getBoundingClientRect();
+  pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointer, camera);
+  if (!raycaster.ray.intersectSphere(sphere, hit)) return null;
+  return mesh.worldToLocal(localDir.copy(hit)).normalize();
+}
+
+/** Reuse the nearest existing mark, or the shallowest slot. */
+function slotFor(dir) {
+  let best = -1;
+  let bestDist = 0.22; // close enough to count as the same thumbprint
+  for (let i = 0; i < MARK_SLOTS; i++) {
+    if (markStrengths[i] <= 0.0005) continue;
+    const d = markDirs[i].distanceTo(dir);
+    if (d < bestDist) { bestDist = d; best = i; }
+  }
+  if (best !== -1) return best;
+
+  let weakest = 0;
+  for (let i = 1; i < MARK_SLOTS; i++) {
+    if (markStrengths[i] < markStrengths[weakest]) weakest = i;
+  }
+  markStrengths[weakest] = 0;
+  return weakest;
+}
+
+function beginPress(dir) {
+  pressing = true;
+  liveSlot = slotFor(dir);
+  markDirs[liveSlot].copy(dir);
+  uniforms.uPressDir.value.copy(dir);
+  stage?.classList.add('is-shaping');
+}
+
+function movePress(dir) {
+  if (!pressing || liveSlot < 0) return;
+  /* Dragging across the surface walks the dent along with the hand. */
+  if (markDirs[liveSlot].distanceTo(dir) > 0.22) liveSlot = slotFor(dir);
+  markDirs[liveSlot].copy(dir);
+  uniforms.uPressDir.value.copy(dir);
+}
+
+function endPress() {
+  if (!pressing) return;
+  pressing = false;
+  /* Whatever was pressed in stays pressed in. */
+  if (liveSlot >= 0) {
+    markStrengths[liveSlot] = Math.min(MARK_MAX, markStrengths[liveSlot] + pressAmp);
+  }
+  pressAmp = 0;
+  liveSlot = -1;
+  stage?.classList.remove('is-shaping');
+  announceMarks();
+}
+
+function activeMarkCount() {
+  let n = 0;
+  for (let i = 0; i < MARK_SLOTS; i++) if (markStrengths[i] > 0.01) n++;
+  return n;
+}
+
+function announceMarks() {
+  if (!markCountEl) return;
+  const n = activeMarkCount();
+  markCountEl.textContent = n === 0
+    ? 'Belum ada bekas.'
+    : `${n} bekas di permukaan — memudar perlahan, bukan seketika.`;
+  if (!shapedOnce && n > 0) {
+    shapedOnce = true;
+    stage?.classList.add('has-been-shaped');
+  }
+}
+
+canvas.addEventListener('pointerdown', (e) => {
+  const dir = surfaceDirAt(e.clientX, e.clientY);
+  if (!dir) return;
+  canvas.setPointerCapture(e.pointerId);
+  beginPress(dir);
+});
+
+canvas.addEventListener('pointermove', (e) => {
+  if (!pressing) return;
+  const dir = surfaceDirAt(e.clientX, e.clientY);
+  if (dir) movePress(dir);
+});
+
+canvas.addEventListener('pointerup', endPress);
+canvas.addEventListener('pointercancel', endPress);
+canvas.addEventListener('lostpointercapture', endPress);
+
+/* Touch: pressing the clay should not also scroll the essay. */
+canvas.addEventListener('touchmove', (e) => {
+  if (pressing) e.preventDefault();
+}, { passive: false });
+
+/* Keyboard path: a cursor in spherical coordinates, pressed with Enter/Space.
+   Same mechanism as the pointer — not a lesser fallback. */
+let keyLat = 0;
+let keyLon = 0;
+const keyDir = new THREE.Vector3();
+
+function keyCursor() {
+  const cosLat = Math.cos(keyLat);
+  return keyDir.set(
+    cosLat * Math.sin(keyLon),
+    Math.sin(keyLat),
+    cosLat * Math.cos(keyLon),
+  ).normalize();
+}
+
+canvas.addEventListener('keydown', (e) => {
+  const step = 0.22;
+  switch (e.key) {
+    case 'ArrowUp':    keyLat = Math.min(1.4, keyLat + step); break;
+    case 'ArrowDown':  keyLat = Math.max(-1.4, keyLat - step); break;
+    case 'ArrowLeft':  keyLon -= step; break;
+    case 'ArrowRight': keyLon += step; break;
+    case 'Enter':
+    case ' ':
+      if (!pressing) beginPress(keyCursor());
+      break;
+    default:
+      return;
+  }
+  e.preventDefault();
+  if (pressing) movePress(keyCursor());
+  else uniforms.uPressDir.value.copy(keyCursor());
+});
+
+canvas.addEventListener('keyup', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') endPress();
+});
+canvas.addEventListener('blur', endPress);
+
+/* --- loop ----------------------------------------------------------------- */
 
 function resize() {
   const w = innerWidth;
@@ -181,6 +422,8 @@ resize();
 
 const clock = new THREE.Clock();
 let spin = SHAPES.tenang.spin;
+const healPerSecond = Math.log(2) / MARK_HALF_LIFE;
+let sinceAnnounce = 0;
 
 renderer.setAnimationLoop(() => {
   const dt = Math.min(clock.getDelta(), 0.1);
@@ -193,10 +436,25 @@ renderer.setAnimationLoop(() => {
   uniforms.uGlow.value.lerp(targetGlow, k);
   spin += (target.spin - spin) * k;
 
+  /* Holding deepens the press; releasing commits it. */
+  if (pressing) pressAmp = Math.min(MARK_MAX, pressAmp + MARK_GAIN * dt);
+  uniforms.uPressAmp.value += (pressAmp - uniforms.uPressAmp.value) * (1 - Math.exp(-dt * 12));
+
+  /* Time, little by little. */
+  const decay = Math.exp(-healPerSecond * dt);
+  for (let i = 0; i < MARK_SLOTS; i++) {
+    if (markStrengths[i] > 0) markStrengths[i] *= decay;
+  }
+
+  sinceAnnounce += dt;
+  if (sinceAnnounce > 4 && !pressing) { sinceAnnounce = 0; announceMarks(); }
+
   if (!reduced) {
     uniforms.uTime.value += dt;
-    mesh.rotation.y += dt * spin;
-    mesh.rotation.x += dt * spin * 0.35;
+    /* The clay holds still while it is being worked. */
+    const spinScale = pressing ? 0.08 : 1;
+    mesh.rotation.y += dt * spin * spinScale;
+    mesh.rotation.x += dt * spin * 0.35 * spinScale;
   }
 
   renderer.render(scene, camera);

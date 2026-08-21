@@ -33,6 +33,40 @@ Kalau tiap emosi digambarkan sebagai objek 3D terpisah, visualisasinya justru me
 
 Bentuk mengikuti scroll lewat `IntersectionObserver`. Panel terakhir menyerahkan kontrolnya ke pembaca — pilih konteks, bahannya tetap sama.
 
+## Membentuk dengan tangan sendiri
+
+Memilih konteks lewat tombol masih memilih dari daftar. Tanah liat yang tidak bisa
+ditekan langsung bukan tanah liat, cuma gambar tanah liat. Jadi permukaannya
+dapat ditekan:
+
+- **Tekan dan tahan** di permukaannya. Ia mengalah di bawah tekanan, makin dalam
+  selama ditahan, sampai batas `MARK_MAX`.
+- **Geser sambil menahan** dan cekungannya ikut berjalan bersama tangan.
+- **Lepaskan, dan bekasnya tinggal.** Tidak ada tombol reset. Bekas itu hanya
+  memudar lewat waktu, dengan paruh waktu `MARK_HALF_LIFE` = 75 detik.
+
+Bagian terakhir itu bukan detail teknis, itu klaim yang sama dengan naskahnya:
+*ada bentuk yang hanya bisa berubah melalui waktu, sedikit demi sedikit.* Tombol
+"hapus semua bekas" akan membantah kalimat itu, jadi tombol itu tidak ada — dan
+`check.mjs` memastikan tidak ada yang menambahkannya nanti.
+
+Mekanismenya tetap patuh pada batasan satu mesh:
+
+- Bekas disimpan sebagai **uniform array berukuran tetap** (`MARK_SLOTS = 12`):
+  arah di permukaan dan kedalamannya. Tidak ada geometry baru, tidak ada alokasi
+  di dalam render loop.
+- Vertex shader menjumlahkan tiga sumber perpindahan: churn konteks, cekungan
+  yang tersimpan, dan tekanan yang sedang berlangsung.
+- Normal dihitung ulang dari permukaan yang sudah berpindah lewat *finite
+  difference*, bukan diambil dari bola aslinya. Tanpa itu, cekungannya bergerak
+  tapi cahayanya tidak ikut — terlihat seperti tekstur, bukan bentuk.
+- Slot dipakai ulang: menekan dekat bekas lama memperdalam bekas itu, bukan
+  membuat yang baru. Kalau semua slot terpakai, yang paling samar yang diganti.
+
+Titik tekan diambil dengan `Raycaster` ke sebuah `Sphere` matematis, lalu
+dikonversi ke ruang lokal mesh — jadi bekasnya menempel pada tanah liat dan ikut
+berputar bersamanya, bukan menempel di layar.
+
 ## Menjalankan
 
 Tanpa bundler, tanpa dependency, tanpa `npm install`. Three.js dimuat dari CDN via import map.
@@ -56,14 +90,34 @@ node check.mjs
 
 ```
 index.html        markup + isi teks
+favicon.svg       ikon: satu massa tanah liat, satu bekas
 assets/style.css  layout, tipografi, palet gelap
-assets/main.js    scene, shader, pemetaan konteks
-check.mjs         pemeriksaan batasan (1 mesh, 1 material, shape valid)
+assets/main.js    scene, shader, pemetaan konteks, mekanisme membentuk
+check.mjs         pemeriksaan batasan (1 mesh, 1 material, 1 geometry,
+                  bekas hanya memudar, jalur keyboard ada, favicon tertaut)
 ```
 
 ## Aksesibilitas
 
-Teks dapat dibaca penuh tanpa WebGL — canvas berperan sebagai latar (`aria-hidden`). Tombol konteks memakai `aria-pressed` dan dapat diakses lewat keyboard. `prefers-reduced-motion` menghentikan animasi idle dan smooth scroll.
+Teks dapat dibaca penuh tanpa WebGL; kalau konteks WebGL gagal dibuat, canvas-nya
+dilepas dan naskahnya tetap utuh.
+
+Karena permukaannya sekarang dapat dibentuk, canvas bukan lagi dekorasi dan tidak
+lagi `aria-hidden`. Ia sebuah kontrol:
+
+- `tabindex="0"` dengan `role="application"` dan `aria-label` yang menjelaskan cara memakainya.
+- **Jalur keyboard penuh, bukan versi seadanya:** panah memindahkan titik tekan
+  dalam koordinat sferis, Enter atau spasi menahan tekanan — mekanisme yang sama
+  persis dengan pointer, bukan pengganti yang lebih miskin.
+- Jumlah bekas dilaporkan lewat `aria-live="polite"`, jadi hasil membentuk tidak
+  hanya tersedia secara visual.
+- Teks tetap dapat diklik meski berada di atas tanah liat: `main` memakai
+  `pointer-events: none` dan hanya elemen isi yang mengaktifkannya kembali, jadi
+  ruang kosong antar paragraf meneruskan tekanan ke permukaan di belakangnya.
+
+Tombol konteks memakai `aria-pressed`. `prefers-reduced-motion` menghentikan churn
+idle dan smooth scroll — tetapi membentuk tetap berfungsi, karena itu respons
+terhadap tindakan pembaca, bukan animasi yang berjalan sendiri.
 
 ## Batas klaim
 
