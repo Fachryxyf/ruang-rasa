@@ -69,6 +69,12 @@ for (const key of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter']) 
 assert.ok(/aria-live="polite"[^>]*id="mark-count"|id="mark-count"[^>]*aria-live="polite"/.test(html),
   'mark count must be announced politely to screen readers');
 
+// The mechanism has to be discoverable, not just present. A reader who never
+// learns the clay can be touched has no mechanism at all.
+assert.ok(/uCursorAmp/.test(js), 'hover affordance missing — uCursorAmp glow must exist');
+assert.ok(/const HOLD_MS = \d+/.test(js), 'HOLD_MS missing — press over text must be a deliberate hold');
+assert.match(html, /class="shape-hint"/, 'shape-hint missing — the mechanism must be stated on screen');
+
 // Favicon: easy to forget, so pin it here.
 assert.match(html, /<link rel="icon"[^>]*href="favicon\.svg"/, 'favicon.svg not linked');
 assert.ok(readFileSync('favicon.svg', 'utf8').includes('<svg'), 'favicon.svg missing or not svg');
@@ -76,5 +82,6 @@ assert.ok(readFileSync('favicon.svg', 'utf8').includes('<svg'), 'favicon.svg mis
 const marks = /const MARK_SLOTS = (\d+)/.exec(js)[1];
 console.log(
   `ok — ${defined.size} shapes, ${used.size} used, 1 mesh, 1 material, ` +
-  `1 geometry, ${marks} mark slots, keyboard + pointer shaping, favicon linked`
+  `1 geometry, ${marks} mark slots, keyboard + pointer shaping, ` +
+  `hover affordance + hold-to-press, favicon linked`
 );

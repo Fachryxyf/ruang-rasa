@@ -18,10 +18,10 @@ const SHAPES = {
 /* --- shaping constants ---------------------------------------------------- */
 
 const MARK_SLOTS = 12;        // fixed uniform array: no allocation while shaping
-const MARK_MAX = 0.30;        // deepest a single press can go
-const MARK_GAIN = 0.85;       // depth added per second of holding
+const MARK_MAX = 0.42;        // deepest a single press can go
+const MARK_GAIN = 1.60;       // depth added per second of holding
 const MARK_HALF_LIFE = 75;    // seconds for a mark to fade to half — time, slowly
-const MARK_TIGHT = 26.0;      // gaussian falloff; higher = smaller thumbprint
+const MARK_TIGHT = 16.0;      // gaussian falloff; higher = smaller thumbprint
 const RADIUS = 1.25;
 
 const canvas = document.getElementById('scene');
@@ -60,20 +60,24 @@ const uniforms = {
   uMarkTight: { value: MARK_TIGHT },
   uPressDir:  { value: new THREE.Vector3(0, 0, 1) },
   uPressAmp:  { value: 0 },
+  /* Where the hand is about to land. Without this the clay looks untouchable. */
+  uCursorDir: { value: new THREE.Vector3(0, 0, 1) },
+  uCursorAmp: { value: 0 },
 };
 
 const material = new THREE.ShaderMaterial({
   uniforms,
   defines: { MARK_SLOTS },
   vertexShader: /* glsl */`
-    uniform float uTime, uAmp, uFreq, uChurn, uMarkTight, uPressAmp;
+    uniform float uTime, uAmp, uFreq, uChurn, uMarkTight, uPressAmp, uCursorAmp;
     uniform vec3 uMarkDir[MARK_SLOTS];
     uniform float uMarkStr[MARK_SLOTS];
-    uniform vec3 uPressDir;
+    uniform vec3 uPressDir, uCursorDir;
     varying vec3 vNormal;
     varying float vDisp;
     varying float vDent;
     varying float vPress;
+    varying float vCursor;
 
     // Ashima simplex noise (3D), public domain.
     vec3 mod289(vec3 x){return x-floor(x*(1./289.))*289.;}
@@ -173,6 +177,8 @@ const material = new THREE.ShaderMaterial({
       vDisp = d / max(uAmp, 0.001);
       vDent = clamp(-dentDisp(n) / 0.12, 0.0, 1.0);
       vPress = clamp(-pressDisp(n) / 0.12, 0.0, 1.0);
+      float cr = distance(n, uCursorDir);
+      vCursor = uCursorAmp * exp(-cr * cr * 34.0);
       vNormal = normalMatrix * geoNormal;
       gl_Position = projectionMatrix * modelViewMatrix * vec4(p0, 1.0);
     }
@@ -183,6 +189,7 @@ const material = new THREE.ShaderMaterial({
     varying float vDisp;
     varying float vDent;
     varying float vPress;
+    varying float vCursor;
 
     void main() {
       vec3 nrm = normalize(vNormal);
@@ -202,6 +209,9 @@ const material = new THREE.ShaderMaterial({
       /* Old marks sit in shadow; the one under the hand right now glows. */
       col = mix(col, uGlow * 0.75, vDent * 0.55);
       col += uColor * vPress * 0.35;
+
+      /* The hand's shadow before it touches: this is the whole affordance. */
+      col += vec3(0.86, 0.80, 0.70) * vCursor * 0.30;
 
       gl_FragColor = vec4(col, 1.0);
     }
@@ -270,6 +280,9 @@ let pressing = false;
 let pressAmp = 0;
 let liveSlot = -1;
 let shapedOnce = false;
+/* Hovering the clay has to look different from hovering the void, or nobody
+   discovers there is anything to press. */
+let cursorOn = false;
 
 /** Screen point → direction on the clay's own surface, or null if it missed. */
 function surfaceDirAt(clientX, clientY) {
@@ -306,6 +319,12 @@ function beginPress(dir) {
   markDirs[liveSlot].copy(dir);
   uniforms.uPressDir.value.copy(dir);
   stage?.classList.add('is-shaping');
+}
+
+function setCursor(dir) {
+  cursorOn = !!dir;
+  if (dir) uniforms.uCursorDir.value.copy(dir);
+  document.body.classList.toggle('is-over-clay', cursorOn);
 }
 
 function movePress(dir) {
@@ -347,26 +366,69 @@ function announceMarks() {
   }
 }
 
-canvas.addEventListener('pointerdown', (e) => {
+/* The essay lies on top of the clay, and the clay is behind every paragraph.
+   Bare clay presses immediately. Over text, a press is claimed only after a
+   short hold — which is what the page asks for anyway ("tekan & tahan"), and
+   leaves a quick click-drag free to select the sentence. */
+const HOLD_MS = 150;
+const HOLD_SLOP = 8; // px of travel that means "selecting", not "pressing"
+
+let holdTimer = 0;
+let holdX = 0;
+let holdY = 0;
+
+function cancelHold() {
+  if (holdTimer) { clearTimeout(holdTimer); holdTimer = 0; }
+}
+
+function overText(e) {
+  return !!e.target?.closest?.('a, button');
+}
+
+addEventListener('pointerdown', (e) => {
+  if (overText(e)) return;
   const dir = surfaceDirAt(e.clientX, e.clientY);
   if (!dir) return;
-  canvas.setPointerCapture(e.pointerId);
-  beginPress(dir);
+
+  if (e.target === canvas) {
+    /* Mouse only: keep the press from becoming a stray text selection. Touch
+       keeps its default so a flick over bare clay can still scroll. */
+    if (e.pointerType !== 'touch') e.preventDefault();
+    beginPress(dir);
+    return;
+  }
+
+  /* Over a paragraph: wait and see. Touch never waits — on a phone the text
+     covers most of the clay and a finger there has to mean scroll. */
+  if (e.pointerType === 'touch') return;
+  holdX = e.clientX;
+  holdY = e.clientY;
+  holdTimer = setTimeout(() => {
+    holdTimer = 0;
+    const held = surfaceDirAt(holdX, holdY);
+    if (!held) return;
+    /* Whatever the browser started selecting was not the intent. */
+    getSelection()?.removeAllRanges();
+    beginPress(held);
+  }, HOLD_MS);
 });
 
-canvas.addEventListener('pointermove', (e) => {
-  if (!pressing) return;
-  const dir = surfaceDirAt(e.clientX, e.clientY);
-  if (dir) movePress(dir);
+addEventListener('pointermove', (e) => {
+  const dir = overText(e) ? null : surfaceDirAt(e.clientX, e.clientY);
+  if (holdTimer && (Math.abs(e.clientX - holdX) > HOLD_SLOP || Math.abs(e.clientY - holdY) > HOLD_SLOP)) {
+    cancelHold();
+  }
+  if (pressing) { if (dir) movePress(dir); return; }
+  setCursor(dir);
 });
 
-canvas.addEventListener('pointerup', endPress);
-canvas.addEventListener('pointercancel', endPress);
-canvas.addEventListener('lostpointercapture', endPress);
+addEventListener('pointerup', () => { cancelHold(); endPress(); });
+addEventListener('pointercancel', () => { cancelHold(); endPress(); });
 
-/* Touch: pressing the clay should not also scroll the essay. */
-canvas.addEventListener('touchmove', (e) => {
-  if (pressing) e.preventDefault();
+/* Touch: once the finger has clearly held rather than flicked, the drag belongs
+   to the clay. Below that threshold it stays a scroll. */
+addEventListener('touchmove', (e) => {
+  if (pressing && pressAmp > 0.25) e.preventDefault();
 }, { passive: false });
 
 /* Keyboard path: a cursor in spherical coordinates, pressed with Enter/Space.
@@ -400,13 +462,14 @@ canvas.addEventListener('keydown', (e) => {
   }
   e.preventDefault();
   if (pressing) movePress(keyCursor());
-  else uniforms.uPressDir.value.copy(keyCursor());
+  else { uniforms.uPressDir.value.copy(keyCursor()); setCursor(keyCursor()); }
 });
 
 canvas.addEventListener('keyup', (e) => {
   if (e.key === 'Enter' || e.key === ' ') endPress();
 });
-canvas.addEventListener('blur', endPress);
+canvas.addEventListener('focus', () => setCursor(keyCursor()));
+canvas.addEventListener('blur', () => { endPress(); setCursor(null); });
 
 /* --- loop ----------------------------------------------------------------- */
 
@@ -439,6 +502,8 @@ renderer.setAnimationLoop(() => {
   /* Holding deepens the press; releasing commits it. */
   if (pressing) pressAmp = Math.min(MARK_MAX, pressAmp + MARK_GAIN * dt);
   uniforms.uPressAmp.value += (pressAmp - uniforms.uPressAmp.value) * (1 - Math.exp(-dt * 12));
+  const cursorTarget = cursorOn && !pressing ? 1 : 0;
+  uniforms.uCursorAmp.value += (cursorTarget - uniforms.uCursorAmp.value) * (1 - Math.exp(-dt * 10));
 
   /* Time, little by little. */
   const decay = Math.exp(-healPerSecond * dt);

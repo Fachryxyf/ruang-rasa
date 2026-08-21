@@ -30,12 +30,14 @@ body {
   width: 100%;
   height: 100%;
   display: block;
-  /* The clay is grabbable, so say so — and keep a press from becoming a scroll. */
-  cursor: grab;
   touch-action: pan-y;
 }
 
-#stage.is-shaping #scene { cursor: grabbing; }
+/* Bare clay says grab. Over a paragraph the I-beam stays — the essay is still
+   there to read, and the glow under the pointer already says the clay responds. */
+body.is-over-clay #scene { cursor: grab; }
+body:has(#stage.is-shaping) #scene,
+body:has(#stage.is-shaping) main { cursor: grabbing; }
 
 #scene:focus-visible {
   outline: 2px solid var(--accent);
@@ -48,14 +50,39 @@ body {
   inset-inline: 0;
   bottom: clamp(1rem, 4vh, 2.5rem);
   margin: 0;
+  z-index: 2;
+  pointer-events: none;
   text-align: center;
   font-family: ui-sans-serif, system-ui, sans-serif;
-  font-size: 0.7rem;
-  letter-spacing: 0.28em;
+  font-size: 0.72rem;
+  letter-spacing: 0.24em;
   text-transform: uppercase;
-  color: var(--ink-dim);
-  opacity: 0.55;
+  color: var(--accent);
+  opacity: 0.75;
   transition: opacity 0.6s;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.shape-hint__sub {
+  letter-spacing: 0.12em;
+  text-transform: none;
+  font-size: 0.68rem;
+  color: var(--ink-dim);
+}
+
+/* Until the reader touches it, the invitation pulses — quietly, once shaped it
+   is gone for good. */
+@media (prefers-reduced-motion: no-preference) {
+  #stage:not(.has-been-shaped):not(.is-shaping) .shape-hint {
+    animation: hint-breathe 3.4s ease-in-out infinite;
+  }
+}
+
+@keyframes hint-breathe {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.8; }
 }
 
 #stage.is-shaping .shape-hint,

@@ -45,6 +45,37 @@ dapat ditekan:
 - **Lepaskan, dan bekasnya tinggal.** Tidak ada tombol reset. Bekas itu hanya
   memudar lewat waktu, dengan paruh waktu `MARK_HALF_LIFE` = 75 detik.
 
+### Supaya ketahuan bisa ditekan
+
+Mekanisme yang tidak terlihat sama saja dengan tidak ada. Instruksi tertulis saja
+tidak cukup — tidak ada apa pun di layar yang menandakan permukaannya hidup. Tiga
+hal menutup jarak itu:
+
+- **Sorotan yang mengikuti kursor.** Sebelum ditekan, uniform `uCursorAmp`
+  menaikkan cahaya hangat tepat di bawah pointer (`exp(-r²·34)`), jadi permukaan
+  sudah menjawab sebelum ditekan. Kursor jadi `grab` di atas tanah liat kosong dan
+  `grabbing` selama menahan.
+- **Isyarat dua baris** di `.shape-hint`: apa yang harus dilakukan, lalu apa
+  akibatnya dan jalur papan tuts-nya. Ia bernapas pelan (`hint-breathe`) selama
+  belum pernah ada yang membentuk, dan diam setelahnya.
+- **Cekungan yang cukup dalam untuk terbaca** di atas churn idle: `MARK_MAX` 0.42,
+  `MARK_GAIN` 1.60/detik, `MARK_TIGHT` 16.0 — jempol yang lebih lebar dan lebih
+  jelas daripada tuning pertama, yang tenggelam di gerak latar.
+
+### Menekan di atas teks
+
+Naskahnya menutupi tanah liat, jadi menekan dan menyeleksi teks memakai gerakan
+yang sama. Aturannya tegas, bukan tebak-tebakan:
+
+- Di atas tanah liat kosong, tekanan langsung jadi. Di atas paragraf, tekanan baru
+  diklaim setelah `HOLD_MS` = 150 ms diam; bergerak lebih dari `HOLD_SLOP` = 8 px
+  membatalkannya, jadi klik-seret cepat tetap menyeleksi teks seperti biasa.
+- Sentuhan tidak pernah menunggu: usapan di atas teks selalu berarti scroll, dan
+  `touchmove` baru mencegah scroll setelah tekanan benar-benar terbentuk.
+- `a` dan `button` selalu menang; keduanya tidak pernah diklaim jadi tekanan.
+- Listener menempel di `window`, bukan di canvas — dengan `main` ber-`pointer-events:
+  none`, canvas tidak akan pernah menerima event yang jatuh di atas paragraf.
+
 Bagian terakhir itu bukan detail teknis, itu klaim yang sama dengan naskahnya:
 *ada bentuk yang hanya bisa berubah melalui waktu, sedikit demi sedikit.* Tombol
 "hapus semua bekas" akan membantah kalimat itu, jadi tombol itu tidak ada — dan
@@ -94,7 +125,8 @@ favicon.svg       ikon: satu massa tanah liat, satu bekas
 assets/style.css  layout, tipografi, palet gelap
 assets/main.js    scene, shader, pemetaan konteks, mekanisme membentuk
 check.mjs         pemeriksaan batasan (1 mesh, 1 material, 1 geometry,
-                  bekas hanya memudar, jalur keyboard ada, favicon tertaut)
+                  bekas hanya memudar, jalur keyboard ada, isyarat sorotan +
+                  tahan-untuk-menekan, favicon tertaut)
 ```
 
 ## Aksesibilitas
