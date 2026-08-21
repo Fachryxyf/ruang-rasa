@@ -1,6 +1,6 @@
 # Ruang Rasa
 
-[![Pages](https://img.shields.io/github/deployments/Fachryxyf/ruang-rasa/github-pages?label=pages&logo=github)](https://fachryxyf.github.io/ruang-rasa/)
+[![Pages](https://img.shields.io/github/deployments/Fachryxyf/ruang-rasa/github-pages?label=pages&logo=github)](https://ruang-rasa.fachryxyf.com)
 [![Three.js](https://img.shields.io/badge/three.js-r169-000000?logo=threedotjs&logoColor=white)](https://threejs.org/)
 [![No build step](https://img.shields.io/badge/build-none-1f883d)](#menjalankan)
 [![License](https://img.shields.io/github/license/Fachryxyf/ruang-rasa)](LICENSE)
@@ -9,7 +9,7 @@
 
 Visualisasi 3D interaktif dari satu gagasan: **rasa adalah satu variabel dasar yang berubah bentuk lewat konteks**, bukan kumpulan emosi yang masing-masing berdiri terpisah.
 
-**[→ Buka visualisasinya](https://fachryxyf.github.io/ruang-rasa/)**
+**[→ ruang-rasa.fachryxyf.com](https://ruang-rasa.fachryxyf.com)**
 
 ## Gagasannya
 
