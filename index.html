@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ruang Rasa — rasa sebagai satu variabel</title>
+<meta name="description" content="Visualisasi 3D interaktif dari gagasan bahwa rasa adalah satu variabel dasar yang berubah bentuk lewat konteks, bukan kumpulan emosi yang terpisah.">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<canvas id="scene" aria-hidden="true"></canvas>
+
+<noscript>
+  <p class="noscript">Visualisasi 3D memerlukan JavaScript. Teksnya tetap dapat dibaca di bawah.</p>
+</noscript>
+
+<main>
+
+  <section class="panel hero" data-shape="tenang">
+    <p class="eyebrow">Naskah reflektif personal</p>
+    <h1>Ruang Rasa</h1>
+    <p class="lead">Hati bukan kumpulan emosi yang terpisah. Ia sebuah tempat. Dan di dalamnya, rasa mungkin hanya satu.</p>
+    <p class="scroll-hint" aria-hidden="true">gulir</p>
+  </section>
+
+  <section class="panel" data-shape="tenang">
+    <h2>Satu tanah liat</h2>
+    <p>Sejak awal kehidupan, tanah liat itu sudah berada di sana. Lalu waktu datang. Pengalaman datang. Manusia datang. Peristiwa datang.</p>
+    <p>Seseorang datang, lalu pergi.</p>
+  </section>
+
+  <section class="panel" data-shape="cinta">
+    <h2>Kita menyebut bentuk itu cinta</h2>
+    <p>Kata &ldquo;cinta&rdquo; dapat mengandung keinginan, rasa aman, ketertarikan, kekaguman, ketakutan kehilangan, keterikatan, kebiasaan, dan harapan sekaligus.</p>
+    <p>Satu kata, hasil kompresi dari sesuatu yang jauh lebih rumit.</p>
+  </section>
+
+  <section class="panel" data-shape="rindu">
+    <h2>Kita menyebutnya rindu</h2>
+    <p>Sendirian malam-malam, rasa bercampur sepi &mdash; terasa seperti rindu. Bersama teman, rasa bercampur tawa &mdash; orang yang sama mungkin tidak terpikirkan selama beberapa jam.</p>
+    <p>Bukan rasanya yang hilang. Campurannya yang berubah.</p>
+  </section>
+
+  <section class="panel" data-shape="kecewa">
+    <h2>Kita menyebutnya kecewa</h2>
+    <p>Label bukan penyebab. Ketika sebuah keadaan diberi nama, nama itu terasa seperti sumbernya &mdash; padahal ia hanya klasifikasi yang diberikan setelah pengalaman terjadi.</p>
+  </section>
+
+  <section class="panel" data-shape="luka">
+    <h2>Kita menyebutnya luka</h2>
+    <p>Kita memukul tanah liat itu dengan tangan yang terlalu kasar. Bentuk lama memang akan berubah, tetapi tidak selalu menjadi bentuk baru yang lebih baik.</p>
+    <p>Ada bentuk yang hanya bisa berubah melalui waktu. Sedikit demi sedikit.</p>
+  </section>
+
+  <section class="panel" data-shape="tenang">
+    <h2>Tetapi tanah liatnya tetap sama</h2>
+    <p>Yang berubah hanyalah bentuknya. Tidak ada sesuatu yang baru masuk &mdash; hanya sesuatu yang lama, yang kembali dibentuk oleh keadaan.</p>
+    <p class="quiet">Perhatikan: sejak awal halaman ini, bentuknya berganti berkali-kali. Objeknya tidak pernah diganti. Satu permukaan, satu bahan, dari awal sampai sekarang.</p>
+  </section>
+
+  <section class="panel panel-wide" data-shape="tenang">
+    <h2>Sekarang kamu yang membentuk</h2>
+    <p>Pilih konteksnya. Bahannya tidak akan diganti.</p>
+    <div class="controls" role="group" aria-label="Pilih konteks yang membentuk rasa">
+      <button type="button" data-shape="tenang" aria-pressed="true">sunyi</button>
+      <button type="button" data-shape="cinta" aria-pressed="false">kedekatan</button>
+      <button type="button" data-shape="rindu" aria-pressed="false">jarak</button>
+      <button type="button" data-shape="kecewa" aria-pressed="false">harapan yang tidak terpenuhi</button>
+      <button type="button" data-shape="luka" aria-pressed="false">kehilangan</button>
+    </div>
+    <p class="label-out" aria-live="polite">Bahan yang sama, dibentuk oleh <strong id="ctx-name">sunyi</strong>.</p>
+  </section>
+
+  <section class="panel panel-wide" data-shape="tenang">
+    <h2>Batas klaim</h2>
+    <p>Ini model konseptual dan metafora reflektif, bukan temuan empiris. Ia bersinggungan dengan <em>core affect</em> (Russell) dan <em>theory of constructed emotion</em> (Barrett), tetapi tidak identik dengan keduanya, dan tidak menyangkal pandangan emosi dasar.</p>
+    <p class="quiet">Rasa tidak selalu harus dihilangkan. Ia dapat diberi bentuk yang baru.</p>
+    <footer>
+      <a href="https://github.com/Fachryxyf/ruang-rasa">Kode sumber di GitHub</a>
+    </footer>
+  </section>
+
+</main>
+
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js" } }
+</script>
+<script type="module" src="assets/main.js"></script>
+</body>
+</html>
