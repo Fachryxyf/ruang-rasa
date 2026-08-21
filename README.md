@@ -58,6 +58,11 @@ hal menutup jarak itu:
 - **Isyarat dua baris** di `.shape-hint`: apa yang harus dilakukan, lalu apa
   akibatnya dan jalur papan tuts-nya. Ia bernapas pelan (`hint-breathe`) selama
   belum pernah ada yang membentuk, dan diam setelahnya.
+- **Tiga langkah bernomor** (`.how`) di panel interaktif: arahkan, tekan &
+  tahan, geser. Sebelumnya ketiganya satu kalimat prosa &mdash; terbaca sebagai
+  naskah dan terlewat. Penomorannya memakai `counter()` dengan cincin sendiri
+  (`#c8b8a066` di atas `#0b0c10cc`), karena `var(--line)` yang setipis `#ffffff14`
+  lenyap di atas tanah liat yang menyala persis di belakang teks itu.
 - **Cekungan yang cukup dalam untuk terbaca** di atas churn idle: `MARK_MAX` 0.42,
   `MARK_GAIN` 1.60/detik, `MARK_TIGHT` 16.0 — jempol yang lebih lebar dan lebih
   jelas daripada tuning pertama, yang tenggelam di gerak latar.

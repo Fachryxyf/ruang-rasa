@@ -96,6 +96,48 @@ body:has(#stage.is-shaping) main { cursor: grabbing; }
 
 .keys { font-size: 0.85rem; }
 
+/* The mechanism as three numbered moves, because "tekan permukaannya, tahan,
+   geser" buried in a sentence read as prose and got skipped. */
+.how {
+  list-style: none;
+  counter-reset: how;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  display: grid;
+  gap: 0.9rem;
+  max-width: 34rem;
+}
+
+.how li {
+  counter-increment: how;
+  position: relative;
+  padding-left: 2.4rem;
+}
+
+/* var(--line) is #ffffff14 — invisible against the lit clay behind the text,
+   which is exactly where these markers sit. They get their own stronger ring
+   and a backing tint so the numbering survives any frame of the animation. */
+.how li::before {
+  content: counter(how);
+  position: absolute;
+  left: 0;
+  top: 0.05em;
+  display: grid;
+  place-items: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  box-sizing: border-box;
+  border: 1px solid #c8b8a066;
+  border-radius: 999px;
+  background: #0b0c10cc;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.8rem;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.how .quiet { display: block; font-size: 0.9rem; }
+
 main {
   position: relative;
   z-index: 1;
@@ -219,7 +261,7 @@ a:hover { color: var(--ink); }
 
 /* Only actual content re-arms pointer events, so the clay stays reachable
    through the empty space around the text. */
-h1, h2, p, .controls, button, a, footer, .noscript {
+h1, h2, p, ol, li, .controls, button, a, footer, .noscript {
   pointer-events: auto;
 }
 
